@@ -1,0 +1,38 @@
+name: Build & Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Only allow one run at a time for this workflow
+# See https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#concurrency
+# This workflow will only run once per this workflow name, and per ref (which is the branch or tag)
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+# Required because we are using OIDC
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.ACTIONS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Test
+        shell: bash
+        run: >
+          npm install &&
+          npm run type-check-and-unit-test &&
+          STACK_NAME_PREFIX=coffee-store-ci npm run integration-test
